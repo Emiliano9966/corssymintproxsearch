@@ -10,13 +10,9 @@
 
   <div class="container">
     <h1>Crossymint Proxy Hub</h1>
-    <text2>
-      <div class="heading">
-      <h2>A Proxy Searching Website.</h2> 
-      
-      </div>
-      </text2>
-   
+    <div class="heading">
+      <h2>A Proxy Searching Website.</h2>
+    </div>
 
     <div class="controls">
       <input type="text" id="searchInput" placeholder="Search links...">
@@ -25,7 +21,7 @@
 
     <!-- Add Link Form -->
     <div id="addForm" class="form hidden">
-      <input type="text" id="linkInput" placeholder="Enter URL (e.g, http://int.vercel-app)">
+      <input type="text" id="linkInput" placeholder="Enter URL (e.g., http://int.vercel.app)">
       <select id="typeSelect" onchange="handleTypeChange(this.value)">
         <option disabled selected>Select Type</option>
         <option>Interstellar</option>
@@ -43,17 +39,12 @@
     <!-- Links Container -->
     <div id="linkList" class="link-list"></div>
 
-    <!-- Tabs Navigation (bottom) -->
-    <div class="tabs" id="tabs">
-      <!-- Dynamically created tabs will go here -->
-    </div>
+    <!-- Tabs Navigation -->
+    <div class="tabs" id="tabs"></div>
   </div>
 
-  <!-- particles.js library -->
+  <!-- particles.js -->
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script src="script.js"></script>
 </body>
-    <text2>
-     
-    </text2>
 </html>
