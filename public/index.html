@@ -45,6 +45,130 @@
 
   <!-- particles.js library -->
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
   <script src="script.js"></script>
+
+  <script>
+    // Initialize Socket.io
+    const socket = io('https://your-vercel-url.vercel.app'); // Use your deployed Vercel URL
+
+    // Particle background
+    particlesJS('particles-js', {
+      particles: {
+        number: { value: 60 },
+        color: { value: '#9c5eff' },
+        shape: { type: 'circle' },
+        opacity: { value: 0.5 },
+        size: { value: 3 },
+        line_linked: {
+          enable: true,
+          distance: 150,
+          color: '#9c5eff',
+          opacity: 0.4,
+          width: 1
+        },
+        move: { enable: true, speed: 2 }
+      },
+      interactivity: {
+        detect_on: 'canvas',
+        events: {
+          onhover: { enable: true, mode: 'grab' },
+          onclick: { enable: true, mode: 'push' }
+        },
+        modes: {
+          grab: { distance: 200, line_linked: { opacity: 0.5 }},
+          push: { particles_nb: 4 }
+        }
+      }
+    });
+
+    // Global link list
+    let links = [];
+
+    // Fetch initial links from the server
+    async function loadLinks() {
+      const response = await fetch('https://your-vercel-url.vercel.app/api/links');
+      const data = await response.json();
+      links = data;
+      renderLinks();
+    }
+
+    // Render links to the page
+    function renderLinks() {
+      const list = document.getElementById('linkList');
+      list.innerHTML = '';
+
+      links.forEach(link => {
+        const div = document.createElement('div');
+        div.className = 'link-item';
+        div.innerHTML = `
+          <div class="link-info">
+            <div class="link-type">${link.type}</div>
+            <div>${link.url}</div>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // Handle form submission
+    async function submitLink() {
+      const urlInput = document.getElementById('linkInput');
+      const typeInput = document.getElementById('typeSelect');
+      const customTypeInput = document.getElementById('customTypeInput');
+      const url = urlInput.value;
+      let type = typeInput.value;
+
+      if (type === 'custom') {
+        type = customTypeInput.value;
+      }
+
+      if (url && type && !links.some(link => link.url === url)) {
+        const newLink = { url, type };
+        links.push(newLink);
+
+        // Emit new link to other clients
+        socket.emit('new-link', newLink);
+
+        // Clear input fields
+        urlInput.value = '';
+        typeInput.value = '';
+        customTypeInput.value = '';
+
+        // Update link list
+        renderLinks();
+      } else {
+        if (links.some(link => link.url === url)) {
+          document.getElementById('duplicateErrorMsg').classList.remove('hidden');
+        } else {
+          document.getElementById('errorMsg').classList.remove('hidden');
+        }
+      }
+    }
+
+    // Toggle the form visibility
+    function toggleForm() {
+      const form = document.getElementById('addForm');
+      form.classList.toggle('hidden');
+    }
+
+    // Handle custom type input visibility
+    function handleTypeChange(value) {
+      const customTypeInput = document.getElementById('customTypeInput');
+      customTypeInput.classList.toggle('hidden', value !== 'custom');
+    }
+
+    // Listen for new links from other clients via WebSockets
+    socket.on('new-link', (newLink) => {
+      if (!links.some(link => link.url === newLink.url)) {
+        links.push(newLink);
+        renderLinks();
+      }
+    });
+
+    // Load initial links on page load
+    loadLinks();
+  </script>
+
 </body>
 </html>
