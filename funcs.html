@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proxy Link Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+
+  <div class="container">
+    <h1>Crossymint Proxy Hub</h1>
+    <text2>
+      <div class="heading">
+      <h2>A Proxy Searching Website.</h2> 
+      
+      </div>
+      </text2>
+   
+
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Search links...">
+      <button onclick="toggleForm()">Add Link</button>
+    </div>
+
+    <!-- Add Link Form -->
+    <div id="addForm" class="form hidden">
+      <input type="text" id="linkInput" placeholder="Enter URL (e.g, http://int.vercel-app)">
+      <select id="typeSelect" onchange="handleTypeChange(this.value)">
+        <option disabled selected>Select Type</option>
+        <option>Interstellar</option>
+        <option>Doge</option>
+        <option>Shuttle</option>
+        <option>Rammerhead</option>
+        <option value="custom">Custom</option>
+      </select>
+      <input type="text" id="customTypeInput" placeholder="Enter custom type..." class="hidden">
+      <button onclick="submitLink()">Submit</button>
+      <div id="errorMsg" class="error hidden">Please Enter A Valid URL!</div>
+      <div id="duplicateErrorMsg" class="error hidden">This link already exists!</div>
+    </div>
+
+    <!-- Links Container -->
+    <div id="linkList" class="link-list"></div>
+
+    <!-- Tabs Navigation (bottom) -->
+    <div class="tabs" id="tabs">
+      <!-- Dynamically created tabs will go here -->
+    </div>
+  </div>
+
+  <!-- particles.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="script.js"></script>
+</body>
+    <text2>
+     
+    </text2>
+</html>
