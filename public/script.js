@@ -1,4 +1,4 @@
-// particles.js config
+// ─── Particles.js Initialization ─────────────────────────────────────────────
 particlesJS('particles-js', {
   particles: {
     number: { value: 60 },
@@ -28,21 +28,24 @@ particlesJS('particles-js', {
   }
 });
 
-// Element references
-const searchInput = document.getElementById('searchInput');
-const linkInput = document.getElementById('linkInput');
-const typeSelect = document.getElementById('typeSelect');
-const customTypeInput = document.getElementById('customTypeInput');
-const errorMsg = document.getElementById('errorMsg');
+// ─── ELEMENT REFS ─────────────────────────────────────────────────────────────
+const searchInput       = document.getElementById('searchInput');
+const linkInput         = document.getElementById('linkInput');
+const typeSelect        = document.getElementById('typeSelect');
+const customTypeInput   = document.getElementById('customTypeInput');
+const errorMsg          = document.getElementById('errorMsg');
 const duplicateErrorMsg = document.getElementById('duplicateErrorMsg');
-const linkList = document.getElementById('linkList');
-const tabs = document.getElementById('tabs');
-const addForm = document.getElementById('addForm');
+const linkList          = document.getElementById('linkList');
+const tabsContainer     = document.getElementById('tabs');
+const addForm           = document.getElementById('addForm');
 
-// Data
+// ─── DATA STORAGE ─────────────────────────────────────────────────────────────
 let links = [];
 
+// ─── FORM TOGGLE & TYPE HANDLING ─────────────────────────────────────────────
 function toggleForm() {
+  errorMsg.classList.add('hidden');
+  duplicateErrorMsg.classList.add('hidden');
   addForm.classList.toggle('hidden');
 }
 
@@ -50,9 +53,10 @@ function handleTypeChange(value) {
   customTypeInput.classList.toggle('hidden', value !== 'custom');
 }
 
-function validateURL(url) {
+// ─── VALIDATION ────────────────────────────────────────────────────────────────
+function validateURL(str) {
   try {
-    new URL(url);
+    new URL(str);
     return true;
   } catch {
     return false;
@@ -63,14 +67,25 @@ function isDuplicate(url) {
   return links.some(link => link.url === url);
 }
 
+// ─── SUBMIT NEW LINK ───────────────────────────────────────────────────────────
 function submitLink() {
-  const url = linkInput.value.trim();
-  const type = typeSelect.value === 'custom' ? customTypeInput.value.trim() : typeSelect.value;
+  const rawUrl = linkInput.value.trim();
+  const url    = rawUrl.startsWith('http') ? rawUrl : 'http://' + rawUrl;
+  let   type   = typeSelect.value === 'custom'
+               ? customTypeInput.value.trim()
+               : typeSelect.value;
 
   errorMsg.classList.add('hidden');
   duplicateErrorMsg.classList.add('hidden');
 
   if (!validateURL(url)) {
+    errorMsg.textContent = 'Please enter a valid URL!';
+    errorMsg.classList.remove('hidden');
+    return;
+  }
+
+  if (!type || type === 'Select Type') {
+    errorMsg.textContent = 'Please select a type!';
     errorMsg.classList.remove('hidden');
     return;
   }
@@ -80,85 +95,84 @@ function submitLink() {
     return;
   }
 
-  const newLink = { url, type, status: '✅', votes: { good: 0, bad: 0 } };
-  links.push(newLink);
+  links.push({ url, type, votes: { up: 0, down: 0 } });
   renderLinks();
   updateTabs();
 
-  linkInput.value = '';
+  // reset form
+  linkInput.value       = '';
+  typeSelect.selectedIndex = 0;
   customTypeInput.value = '';
-  typeSelect.value = 'Select Type';
   addForm.classList.add('hidden');
 }
 
+// ─── RENDER LINKS ──────────────────────────────────────────────────────────────
 function renderLinks(filter = '') {
   linkList.innerHTML = '';
+  const filtered = links.filter(l =>
+    l.url.toLowerCase().includes(filter.toLowerCase()) ||
+    l.type.toLowerCase().includes(filter.toLowerCase())
+  );
 
-  const filteredLinks = links.filter(link => link.url.toLowerCase().includes(filter.toLowerCase()));
+  filtered.forEach((link, idx) => {
+    const item = document.createElement('div');
+    item.className = 'link-item';
 
-  for (const link of filteredLinks) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'link';
+    item.innerHTML = `
+      <div class="link-info">
+        <div class="link-type">[${link.type}]</div>
+        <a href="${link.url}" target="_blank">${link.url}</a>
+      </div>
+      <div class="rating">
+        <button ${localStorage.getItem(link.url) ? 'disabled' : ''}
+          onclick="rate(${idx}, 'up')">✔️ ${link.votes.up}</button>
+        <button ${localStorage.getItem(link.url) ? 'disabled' : ''}
+          onclick="rate(${idx}, 'down')">❌ ${link.votes.down}</button>
+        <button onclick="copyToClipboard('${link.url}')">📋</button>
+      </div>
+    `;
 
-    const a = document.createElement('a');
-    a.href = link.url;
-    a.textContent = link.url;
-    a.target = '_blank';
-
-    const typeTag = document.createElement('span');
-    typeTag.className = 'type';
-    typeTag.textContent = `[${link.type}]`;
-
-    const status = document.createElement('span');
-    status.className = 'status';
-    status.textContent = link.status;
-
-    const voteGood = document.createElement('button');
-    voteGood.textContent = `✅ ${link.votes.good}`;
-    voteGood.onclick = () => rate(link, 'good');
-
-    const voteBad = document.createElement('button');
-    voteBad.textContent = `❌ ${link.votes.bad}`;
-    voteBad.onclick = () => rate(link, 'bad');
-
-    wrapper.appendChild(typeTag);
-    wrapper.appendChild(a);
-    wrapper.appendChild(status);
-    wrapper.appendChild(voteGood);
-    wrapper.appendChild(voteBad);
-    linkList.appendChild(wrapper);
-  }
+    linkList.appendChild(item);
+  });
 }
 
+// ─── UPDATE TABS ───────────────────────────────────────────────────────────────
 function updateTabs() {
   const types = [...new Set(links.map(l => l.type))];
-  tabs.innerHTML = '';
+  tabsContainer.innerHTML = '';
 
   types.forEach(type => {
     const btn = document.createElement('button');
     btn.textContent = type;
-    btn.onclick = () => renderLinks(type);
-    tabs.appendChild(btn);
+    btn.onclick   = () => renderLinks(type);
+    tabsContainer.appendChild(btn);
   });
 
-  // Add "All" tab
   if (types.length > 1) {
-    const all = document.createElement('button');
-    all.textContent = 'All';
-    all.onclick = () => renderLinks();
-    tabs.appendChild(all);
+    const allBtn = document.createElement('button');
+    allBtn.textContent = 'All';
+    allBtn.onclick     = () => renderLinks();
+    tabsContainer.appendChild(allBtn);
   }
 }
 
-function rate(link, type) {
-  const key = `voted-${link.url}`;
+// ─── VOTING WITH ANTI-SPAM ────────────────────────────────────────────────────
+function rate(index, direction) {
+  const link = links[index];
+  if (localStorage.getItem(link.url)) return;
 
-  if (localStorage.getItem(key)) return;
-
-  link.votes[type]++;
-  localStorage.setItem(key, true);
+  link.votes[direction]++;
+  localStorage.setItem(link.url, 'voted');
   renderLinks(searchInput.value);
 }
 
-// Filter as you type
+// ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
+function copyToClipboard(txt) {
+  navigator.clipboard.writeText(txt);
+}
+
+// ─── LIVE SEARCH ──────────────────────────────────────────────────────────────
 searchInput.addEventListener('input', e => renderLinks(e.target.value));
+
+// ─── INITIAL RENDER ──────────────────────────────────────────────────────────
+renderLinks();
