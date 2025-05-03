@@ -1,156 +1,164 @@
+// particles.js config
+particlesJS('particles-js', {
+  particles: {
+    number: { value: 60 },
+    color: { value: '#9c5eff' },
+    shape: { type: 'circle' },
+    opacity: { value: 0.5 },
+    size: { value: 3 },
+    line_linked: {
+      enable: true,
+      distance: 150,
+      color: '#9c5eff',
+      opacity: 0.4,
+      width: 1
+    },
+    move: { enable: true, speed: 2 }
+  },
+  interactivity: {
+    detect_on: 'canvas',
+    events: {
+      onhover: { enable: true, mode: 'grab' },
+      onclick: { enable: true, mode: 'push' }
+    },
+    modes: {
+      grab: { distance: 200, line_linked: { opacity: 0.5 } },
+      push: { particles_nb: 4 }
+    }
+  }
+});
+
+// Element references
+const searchInput = document.getElementById('searchInput');
+const linkInput = document.getElementById('linkInput');
+const typeSelect = document.getElementById('typeSelect');
+const customTypeInput = document.getElementById('customTypeInput');
+const errorMsg = document.getElementById('errorMsg');
+const duplicateErrorMsg = document.getElementById('duplicateErrorMsg');
+const linkList = document.getElementById('linkList');
+const tabs = document.getElementById('tabs');
+const addForm = document.getElementById('addForm');
+
+// Data
 let links = [];
-let currentTab = 0;
-const linksPerPage = 5;
-
-// API endpoints
-const API_URL = '/api/links';
-
-async function fetchLinks() {
-  const res = await fetch(API_URL);
-  links = await res.json();
-  renderLinks();
-}
-
-async function submitLink() {
-  const urlIn = document.getElementById("linkInput");
-  const typeSel = document.getElementById("typeSelect");
-  const customIn = document.getElementById("customTypeInput");
-  const error = document.getElementById("errorMsg");
-  const duplicateError = document.getElementById("duplicateErrorMsg");
-
-  let url = urlIn.value.trim();
-  let type = typeSel.value;
-
-  if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
-  if (!isValidURL(url)) {
-    error.classList.remove("hidden");
-    return;
-  }
-
-  if (type === "Select Type" || !type) {
-    error.textContent = "Please select a type!";
-    error.classList.remove("hidden");
-    return;
-  }
-
-  if (type === "custom") {
-    const c = customIn.value.trim();
-    if (!c) {
-      error.textContent = "Please enter your custom type!";
-      error.classList.remove("hidden");
-      return;
-    }
-    type = c;
-  }
-
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, type })
-    });
-
-    if (res.status === 409) {
-      duplicateError.classList.remove("hidden");
-      return;
-    }
-
-    await fetchLinks();
-    toggleForm();
-    urlIn.value = '';
-    customIn.value = '';
-    typeSel.selectedIndex = 0;
-    customIn.classList.add("hidden");
-    error.classList.add("hidden");
-    duplicateError.classList.add("hidden");
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function rate(index, direction) {
-  const link = links[index];
-  if (!link || link.voted) return;
-
-  await fetch(API_URL, {
-    method: 'PUT',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url: link.url, direction })
-  });
-
-  link.voted = true;
-  await fetchLinks();
-}
-
-function renderLinks() {
-  const search = document.getElementById("searchInput").value.toLowerCase();
-  const list = document.getElementById("linkList");
-  const tabs = document.getElementById("tabs");
-
-  const filteredLinks = links.filter(l =>
-    l.url.toLowerCase().includes(search) ||
-    l.type.toLowerCase().includes(search)
-  );
-
-  const startIndex = currentTab * linksPerPage;
-  const endIndex = startIndex + linksPerPage;
-  const linksToShow = filteredLinks.slice(startIndex, endIndex);
-
-  list.innerHTML = "";
-  linksToShow.forEach((link, i) => {
-    const div = document.createElement("div");
-    div.className = "link-item";
-    div.innerHTML = `
-      <div class="link-info">
-        <div class="link-type">${link.type}</div>
-        <div>${link.url}</div>
-      </div>
-      <div class="rating">
-        <button ${link.voted ? 'disabled' : ''} onclick="rate(${i}, 'up')">✔️ ${link.up}</button>
-        <button ${link.voted ? 'disabled' : ''} onclick="rate(${i}, 'down')">❌ ${link.down}</button>
-        <button onclick="copyToClipboard('${link.url}')">📋</button>
-      </div>
-    `;
-    list.appendChild(div);
-  });
-
-  const numTabs = Math.ceil(filteredLinks.length / linksPerPage);
-  tabs.innerHTML = "";
-  for (let i = 0; i < numTabs; i++) {
-    const tab = document.createElement("button");
-    tab.textContent = i + 1;
-    tab.classList.toggle("active", i === currentTab);
-    tab.onclick = () => switchTab(i);
-    tabs.appendChild(tab);
-  }
-}
-
-// Utility Functions
-function isValidURL(str) {
-  const pattern = /^(https?:\/\/)?([\w-]+(\.[\w-]+)+)(\/.*)?$/i;
-  return pattern.test(str);
-}
-
-function copyToClipboard(txt) {
-  navigator.clipboard.writeText(txt);
-}
-
-function switchTab(tabIndex) {
-  currentTab = tabIndex;
-  renderLinks();
-}
 
 function toggleForm() {
-  document.getElementById("errorMsg").classList.add("hidden");
-  document.getElementById("duplicateErrorMsg").classList.add("hidden");
-  document.getElementById("addForm").classList.toggle("hidden");
+  addForm.classList.toggle('hidden');
 }
 
 function handleTypeChange(value) {
-  document.getElementById("customTypeInput").classList.toggle("hidden", value !== "custom");
+  customTypeInput.classList.toggle('hidden', value !== 'custom');
 }
 
-document.getElementById("searchInput").addEventListener("input", renderLinks);
+function validateURL(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-fetchLinks(); // load initial data
+function isDuplicate(url) {
+  return links.some(link => link.url === url);
+}
+
+function submitLink() {
+  const url = linkInput.value.trim();
+  const type = typeSelect.value === 'custom' ? customTypeInput.value.trim() : typeSelect.value;
+
+  errorMsg.classList.add('hidden');
+  duplicateErrorMsg.classList.add('hidden');
+
+  if (!validateURL(url)) {
+    errorMsg.classList.remove('hidden');
+    return;
+  }
+
+  if (isDuplicate(url)) {
+    duplicateErrorMsg.classList.remove('hidden');
+    return;
+  }
+
+  const newLink = { url, type, status: '✅', votes: { good: 0, bad: 0 } };
+  links.push(newLink);
+  renderLinks();
+  updateTabs();
+
+  linkInput.value = '';
+  customTypeInput.value = '';
+  typeSelect.value = 'Select Type';
+  addForm.classList.add('hidden');
+}
+
+function renderLinks(filter = '') {
+  linkList.innerHTML = '';
+
+  const filteredLinks = links.filter(link => link.url.toLowerCase().includes(filter.toLowerCase()));
+
+  for (const link of filteredLinks) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'link';
+
+    const a = document.createElement('a');
+    a.href = link.url;
+    a.textContent = link.url;
+    a.target = '_blank';
+
+    const typeTag = document.createElement('span');
+    typeTag.className = 'type';
+    typeTag.textContent = `[${link.type}]`;
+
+    const status = document.createElement('span');
+    status.className = 'status';
+    status.textContent = link.status;
+
+    const voteGood = document.createElement('button');
+    voteGood.textContent = `✅ ${link.votes.good}`;
+    voteGood.onclick = () => rate(link, 'good');
+
+    const voteBad = document.createElement('button');
+    voteBad.textContent = `❌ ${link.votes.bad}`;
+    voteBad.onclick = () => rate(link, 'bad');
+
+    wrapper.appendChild(typeTag);
+    wrapper.appendChild(a);
+    wrapper.appendChild(status);
+    wrapper.appendChild(voteGood);
+    wrapper.appendChild(voteBad);
+    linkList.appendChild(wrapper);
+  }
+}
+
+function updateTabs() {
+  const types = [...new Set(links.map(l => l.type))];
+  tabs.innerHTML = '';
+
+  types.forEach(type => {
+    const btn = document.createElement('button');
+    btn.textContent = type;
+    btn.onclick = () => renderLinks(type);
+    tabs.appendChild(btn);
+  });
+
+  // Add "All" tab
+  if (types.length > 1) {
+    const all = document.createElement('button');
+    all.textContent = 'All';
+    all.onclick = () => renderLinks();
+    tabs.appendChild(all);
+  }
+}
+
+function rate(link, type) {
+  const key = `voted-${link.url}`;
+
+  if (localStorage.getItem(key)) return;
+
+  link.votes[type]++;
+  localStorage.setItem(key, true);
+  renderLinks(searchInput.value);
+}
+
+// Filter as you type
+searchInput.addEventListener('input', e => renderLinks(e.target.value));
