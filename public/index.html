@@ -15,7 +15,7 @@
     </div>
 
     <div class="controls">
-      <input type="text" id="searchInput" placeholder="Search links...">
+      <input type="text" id="searchInput" placeholder="Search links..." oninput="renderLinks()">
       <button onclick="toggleForm()">Add Link</button>
     </div>
 
@@ -43,15 +43,9 @@
     <div class="tabs" id="tabs"></div>
   </div>
 
-  <!-- particles.js library -->
+  <!-- particles.js -->
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-  <script src="script.js"></script>
-
   <script>
-    // Initialize Socket.io
-    const socket = io('https://your-vercel-url.vercel.app'); // Use your deployed Vercel URL
-
     // Particle background
     particlesJS('particles-js', {
       particles: {
@@ -81,93 +75,112 @@
         }
       }
     });
+  </script>
 
-    // Global link list
+  <script>
     let links = [];
 
-    // Fetch initial links from the server
+    // Fetch links from server
     async function loadLinks() {
-      const response = await fetch('https://your-vercel-url.vercel.app/api/links');
-      const data = await response.json();
-      links = data;
-      renderLinks();
+      try {
+        const res = await fetch('/api/links');
+        links = await res.json();
+        renderLinks();
+      } catch (err) {
+        console.error('Failed to load links:', err);
+      }
     }
 
-    // Render links to the page
+    // Render links
     function renderLinks() {
       const list = document.getElementById('linkList');
+      const search = document.getElementById('searchInput').value.toLowerCase();
       list.innerHTML = '';
 
-      links.forEach(link => {
-        const div = document.createElement('div');
-        div.className = 'link-item';
-        div.innerHTML = `
-          <div class="link-info">
-            <div class="link-type">${link.type}</div>
-            <div>${link.url}</div>
-          </div>
-        `;
-        list.appendChild(div);
-      });
+      links
+        .filter(link => link.url.toLowerCase().includes(search) || link.type.toLowerCase().includes(search))
+        .forEach(link => {
+          const div = document.createElement('div');
+          div.className = 'link-item';
+          div.innerHTML = `
+            <div class="link-info">
+              <div class="link-type">${link.type}</div>
+              <div><a href="${link.url}" target="_blank">${link.url}</a></div>
+            </div>
+          `;
+          list.appendChild(div);
+        });
     }
 
-    // Handle form submission
+    // Submit link
     async function submitLink() {
       const urlInput = document.getElementById('linkInput');
-      const typeInput = document.getElementById('typeSelect');
+      const typeSelect = document.getElementById('typeSelect');
       const customTypeInput = document.getElementById('customTypeInput');
-      const url = urlInput.value;
-      let type = typeInput.value;
+      const errorMsg = document.getElementById('errorMsg');
+      const duplicateMsg = document.getElementById('duplicateErrorMsg');
 
-      if (type === 'custom') {
-        type = customTypeInput.value;
+      let url = urlInput.value.trim();
+      let type = typeSelect.value === 'custom' ? customTypeInput.value.trim() : typeSelect.value;
+
+      errorMsg.classList.add('hidden');
+      duplicateMsg.classList.add('hidden');
+
+      // Validate
+      const validURL = url.startsWith('http://') || url.startsWith('https://');
+      const exists = links.some(link => link.url === url);
+
+      if (!validURL) {
+        errorMsg.classList.remove('hidden');
+        return;
       }
 
-      if (url && type && !links.some(link => link.url === url)) {
-        const newLink = { url, type };
-        links.push(newLink);
+      if (exists) {
+        duplicateMsg.classList.remove('hidden');
+        return;
+      }
 
-        // Emit new link to other clients
-        socket.emit('new-link', newLink);
+      try {
+        const res = await fetch('/api/links', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, type })
+        });
 
-        // Clear input fields
-        urlInput.value = '';
-        typeInput.value = '';
-        customTypeInput.value = '';
-
-        // Update link list
-        renderLinks();
-      } else {
-        if (links.some(link => link.url === url)) {
-          document.getElementById('duplicateErrorMsg').classList.remove('hidden');
+        if (res.ok) {
+          const newLink = await res.json();
+          links.push(newLink);
+          renderLinks();
+          urlInput.value = '';
+          typeSelect.value = '';
+          customTypeInput.value = '';
+          toggleForm();
+        } else if (res.status === 409) {
+          duplicateMsg.classList.remove('hidden');
         } else {
-          document.getElementById('errorMsg').classList.remove('hidden');
+          errorMsg.classList.remove('hidden');
         }
+      } catch (err) {
+        console.error('Error submitting link:', err);
+        errorMsg.classList.remove('hidden');
       }
     }
 
-    // Toggle the form visibility
+    // Toggle form
     function toggleForm() {
-      const form = document.getElementById('addForm');
-      form.classList.toggle('hidden');
+      document.getElementById('addForm').classList.toggle('hidden');
     }
 
-    // Handle custom type input visibility
+    // Show/hide custom input
     function handleTypeChange(value) {
-      const customTypeInput = document.getElementById('customTypeInput');
-      customTypeInput.classList.toggle('hidden', value !== 'custom');
+      document.getElementById('customTypeInput').classList.toggle('hidden', value !== 'custom');
     }
 
-    // Listen for new links from other clients via WebSockets
-    socket.on('new-link', (newLink) => {
-      if (!links.some(link => link.url === newLink.url)) {
-        links.push(newLink);
-        renderLinks();
-      }
-    });
+    // Auto-refresh every 5 seconds
+    setInterval(loadLinks, 5000);
 
-    // Load initial links on page load
-    loadLinks();
+    // Load links on page load
+    window.onload = loadLinks;
   </script>
 
 </body>
